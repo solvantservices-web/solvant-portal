@@ -1,7 +1,0 @@
-[[edge_functions]]
-  path = "/api/scrape"
-  function = "scrape"
-
-[[edge_functions]]
-  path = "/api/enrich"
-  function = "enrich"
