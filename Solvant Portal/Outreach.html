@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solvant Outreach Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; }
+
+  header { background: #161616; border-bottom: 1px solid #2a2a2a; padding: 18px 32px; display: flex; align-items: center; gap: 14px; }
+  header .logo { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  header .logo span { color: #6c63ff; }
+  header .sub { font-size: 13px; color: #666; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  .upload-zone { border: 1.5px dashed #2e2e2e; border-radius: 12px; padding: 48px 32px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; background: #161616; }
+  .upload-zone:hover, .upload-zone.dragover { border-color: #6c63ff; background: #1a1830; }
+  .upload-zone .icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-zone h2 { font-size: 17px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .upload-zone p { font-size: 13px; color: #666; }
+  .upload-zone input { display: none; }
+
+  .file-loaded { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .file-loaded .info { display: flex; align-items: center; gap: 12px; }
+  .file-loaded .file-icon { width: 40px; height: 40px; background: #1e1c3a; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .file-loaded .file-name { font-size: 15px; font-weight: 600; color: #fff; }
+  .file-loaded .file-meta { font-size: 12px; color: #666; margin-top: 2px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: #6c63ff; color: #fff; }
+  .btn-primary:hover { background: #5a52e0; }
+  .btn-primary:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+  .btn-secondary { background: #1e1e1e; color: #ccc; border: 1px solid #2a2a2a; }
+  .btn-secondary:hover { background: #252525; color: #fff; }
+  .btn-success { background: #1a3a2a; color: #4ade80; border: 1px solid #2a5a3a; }
+  .btn-success:hover { background: #1f4530; }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
+
+  .generate-bar { margin-top: 24px; display: flex; align-items: center; justify-content: space-between; background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; padding: 16px 20px; }
+  .generate-bar .leads-count { font-size: 14px; color: #aaa; }
+  .generate-bar .leads-count strong { color: #fff; }
+
+  .results { margin-top: 32px; display: flex; flex-direction: column; gap: 20px; }
+
+  .lead-card { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; }
+  .lead-card-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2a2a2a; background: #1a1a1a; }
+  .lead-card-header .business { display: flex; align-items: center; gap: 10px; }
+  .lead-card-header .avatar { width: 34px; height: 34px; border-radius: 8px; background: #1e1c3a; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #6c63ff; }
+  .lead-card-header .name { font-size: 15px; font-weight: 700; color: #fff; }
+  .lead-card-header .email { font-size: 12px; color: #666; margin-top: 1px; }
+  .problem-tag { font-size: 11px; font-weight: 600; background: #1e1c3a; color: #a89fff; padding: 4px 10px; border-radius: 20px; }
+
+  .lead-card-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .msg-block { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
+  .msg-block .msg-label { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .msg-block .subject-line { font-size: 13px; font-weight: 600; color: #a89fff; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #1e1e1e; }
+  .msg-block .msg-text { font-size: 13px; color: #bbb; line-height: 1.65; white-space: pre-wrap; max-height: 220px; overflow-y: auto; }
+  .msg-block .msg-text::-webkit-scrollbar { width: 4px; }
+  .msg-block .msg-text::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .copy-btn { background: none; border: none; cursor: pointer; color: #555; font-size: 12px; font-weight: 600; transition: color 0.15s; padding: 2px 6px; border-radius: 4px; }
+  .copy-btn:hover { color: #6c63ff; background: #1e1c3a; }
+  .copy-btn.copied { color: #4ade80; }
+
+  .export-bar { margin-top: 32px; padding-bottom: 60px; }
+  .export-table-wrap { overflow-x: auto; margin-top: 16px; }
+  .export-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .export-table th { background: #1a1a1a; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border: 1px solid #2a2a2a; white-space: nowrap; }
+  .export-table td { padding: 10px 12px; border: 1px solid #1e1e1e; color: #ccc; vertical-align: top; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .export-table tr:nth-child(even) td { background: #131313; }
+  .export-bar-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .export-bar-top h3 { font-size: 14px; font-weight: 600; color: #fff; }
+  .export-bar-top p { font-size: 12px; color: #555; margin-top: 2px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #444; }
+  .empty-state .big { font-size: 32px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  .skipped-note { font-size: 12px; color: #555; text-align: center; padding: 12px; background: #111; border-radius: 8px; border: 1px solid #1e1e1e; }
+  .skipped-bar { margin-top: 12px; background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px 18px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .skipped-item { font-size: 12px; color: #666; display: flex; align-items: center; gap: 6px; }
+  .skipped-item .s-count { font-weight: 700; color: #aaa; }
+  .skipped-item .s-dot { width: 6px; height: 6px; border-radius: 50%; background: #333; }
+  .skipped-item.done .s-dot { background: #4ade80; }
+  .skipped-item.missing .s-dot { background: #f87171; }
+  .followup-section { margin-top: 32px; }
+  .followup-section-title { font-size: 13px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .followup-section-title span { color: #fbbf24; }
+  .followup-card { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+  .followup-card-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2a2a2a; background: #1a1a1a; gap: 16px; flex-wrap: wrap; }
+  .followup-card-body { padding: 16px 20px; }
+  .followup-msg { background: #111; border: 1px solid #222; border-radius: 8px; padding: 14px; font-size: 13px; color: #bbb; line-height: 1.65; white-space: pre-wrap; }
+  .days-badge { font-size: 11px; background: #2a1f00; color: #fbbf24; border: 1px solid #4a3800; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+
+  .analytics { margin-top: 28px; }
+  .analytics-title { font-size: 13px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .metric-card { background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; }
+  .metric-card .m-label { font-size: 11px; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .metric-card .m-value { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
+  .metric-card .m-sub { font-size: 12px; color: #555; margin-top: 4px; }
+  .metric-card.accent .m-value { color: #6c63ff; }
+  .metric-card.green .m-value { color: #4ade80; }
+  .metric-card.amber .m-value { color: #fbbf24; }
+  .bar-section { background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; }
+  .bar-section-title { font-size: 12px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label { font-size: 12px; color: #aaa; width: 120px; flex-shrink: 0; }
+  .bar-track { flex: 1; background: #1e1e1e; border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; background: #6c63ff; transition: width 0.4s ease; }
+  .bar-fill.green { background: #4ade80; }
+  .bar-count { font-size: 12px; color: #555; width: 40px; text-align: right; flex-shrink: 0; }
+  .divider { border: none; border-top: 1px solid #1e1e1e; margin: 28px 0; }
+
+  .progress-bar-wrap { margin-top: 12px; background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px 18px; display: flex; align-items: center; gap: 16px; }
+  .progress-label { font-size: 13px; color: #aaa; white-space: nowrap; }
+  .progress-label strong { color: #fff; }
+  .progress-track { flex: 1; background: #1e1e1e; border-radius: 4px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; background: #6c63ff; transition: width 0.3s ease; }
+  .view-toggle { display: flex; gap: 6px; margin-top: 12px; justify-content: flex-end; }
+  .view-toggle button { background: #1e1e1e; border: 1px solid #2a2a2a; color: #666; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .view-toggle button.active { background: #1e1c3a; color: #a89fff; border-color: #3a3060; }
+  .compact-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .compact-row { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .compact-row:hover { border-color: #6c63ff; }
+  .compact-row .c-avatar { width: 28px; height: 28px; border-radius: 6px; background: #1e1c3a; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #6c63ff; flex-shrink: 0; }
+  .compact-row .c-name { font-size: 13px; font-weight: 600; color: #fff; flex: 1; }
+  .compact-row .c-email { font-size: 12px; color: #555; flex: 1; }
+  .compact-row .c-tag { font-size: 11px; background: #1e1c3a; color: #a89fff; padding: 3px 8px; border-radius: 12px; }
+  .compact-row .c-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .sent-btn { background: #1a3a2a; color: #4ade80; border: 1px solid #2a5a3a; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .sent-btn:hover { background: #1f4530; }
+  .sent-btn.marked { background: #0f2a1a; color: #2a8a50; border-color: #1a4a2a; cursor: default; }
+  .gmail-btn { background: #1a2a3a; color: #60a5fa; border: 1px solid #2a4a6a; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .gmail-auth-bar { background: #161616; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .gmail-auth-bar .auth-info { font-size: 13px; color: #666; }
+  .gmail-auth-bar .auth-info strong { color: #fff; }
+  .gmail-auth-bar .auth-status { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .auth-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+  .auth-dot.connected { background: #4ade80; }
+  .reply-btn { background: #1a3a2a; color: #4ade80; border: 1px solid #2a5a3a; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .reply-btn:hover { background: #1f4530; }
+  .reply-btn:disabled { background: #1a1a1a; color: #444; border-color: #2a2a2a; cursor: not-allowed; }
+  .gmail-btn:hover { background: #1f3550; }
+  @media (max-width: 600px) {
+    .lead-card-body { grid-template-columns: 1fr; }
+    .container { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <a href="index.html" style="font-size:12px;color:#555;text-decoration:none;font-weight:600;display:flex;align-items:center;gap:5px;transition:color 0.15s;" onmouseover="this.style.color='#aaa'" onmouseout="this.style.color='#555'">← Portal</a>
+    <div>
+      <div class="logo">Solvant <span>Outreach</span></div>
+      <div class="sub">Email & DM generator</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="uploadSection">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="icon">📊</div>
+      <h2>Upload your Excel sheet</h2>
+      <p>Drop your Outreach_Table file here, or click to browse</p>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </div>
+  </div>
+
+  <div id="gmailAuthBar" class="gmail-auth-bar" style="display:none;">
+    <div class="auth-info">Gmail — <strong id="gmailUser">not connected</strong></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="auth-status"><div class="auth-dot" id="authDot"></div><span id="authLabel">Not connected</span></div>
+      <button class="btn btn-secondary btn-sm" id="gmailAuthBtn" onclick="connectGmail()">Connect Gmail</button>
+    </div>
+  </div>
+
+  <div id="fileLoaded" style="display:none;">
+    <div class="file-loaded">
+      <div class="info">
+        <div class="file-icon">📊</div>
+        <div>
+          <div class="file-name" id="fileName"></div>
+          <div class="file-meta" id="fileMeta"></div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="resetTool()">Change file</button>
+    </div>
+
+    <div class="generate-bar">
+      <div class="leads-count" id="leadsCount"></div>
+      <button class="btn btn-primary" id="generateBtn" onclick="generateAll()">Generate emails</button>
+    </div>
+  </div>
+
+  <div id="analytics" class="analytics" style="display:none;">
+    <hr class="divider">
+    <div class="analytics-title">Outreach analytics</div>
+    <div class="metrics-grid">
+      <div class="metric-card accent"><div class="m-label">Total contacted</div><div class="m-value" id="mTotal">0</div><div class="m-sub">leads</div></div>
+      <div class="metric-card green"><div class="m-label">Replied</div><div class="m-value" id="mReplied">0</div><div class="m-sub" id="mReplyRate">0% reply rate</div></div>
+      <div class="metric-card amber"><div class="m-label">Pending</div><div class="m-value" id="mPending">0</div><div class="m-sub">no reply yet</div></div>
+      <div class="metric-card"><div class="m-label">Follow ups</div><div class="m-value" id="mFollowups">0</div><div class="m-sub">sent</div></div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="bar-section">
+        <div class="bar-section-title">Replies by problem type</div>
+        <div id="templateBars"></div>
+      </div>
+      <div class="bar-section">
+        <div class="bar-section-title">Leads per day (last 7 days)</div>
+        <div id="activityBars"></div>
+      </div>
+    </div>
+    <hr class="divider">
+  </div>
+
+  <div id="skippedBar" style="display:none;" class="skipped-bar">
+    <div class="skipped-item done"><div class="s-dot"></div><span class="s-count" id="sAlready">0</span> already contacted</div>
+    <div class="skipped-item missing"><div class="s-dot"></div><span class="s-count" id="sMissing">0</span> missing mandatory data</div>
+    <div class="skipped-item"><div class="s-dot"></div><span class="s-count" id="sPending">0</span> pending generation</div>
+    <div class="skipped-item" style="margin-left:auto;"><div class="s-dot" style="background:#fbbf24;"></div><span class="s-count" style="color:#fbbf24;" id="sFollowup">0</span> need follow up</div>
+  </div>
+
+  <div id="progressWrap" style="display:none;">
+    <div class="progress-bar-wrap">
+      <div class="progress-label"><strong id="sentCount">0</strong> / <strong id="totalCount">0</strong> sent today</div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="view-toggle">
+      <button id="btnFull" class="active" onclick="setView('full')">Full view</button>
+      <button id="btnCompact" onclick="setView('compact')">Compact view</button>
+    </div>
+  </div>
+
+  <div id="results" class="results"></div>
+  <div id="compactList" class="compact-list" style="display:none;"></div>
+
+  <div id="followupSection" class="followup-section" style="display:none;">
+    <hr class="divider">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="followup-section-title" style="margin-bottom:0;">Follow ups <span id="followupCount"></span></div>
+      <div class="view-toggle" style="margin-top:0;">
+        <button id="btnFuFull" class="active" onclick="setFollowupView('full')">Full view</button>
+        <button id="btnFuCompact" onclick="setFollowupView('compact')">Compact view</button>
+      </div>
+    </div>
+    <div id="followupCards"></div>
+    <div id="followupCompact" class="compact-list" style="display:none;"></div>
+  </div>
+
+  <div id="exportBar" class="export-bar" style="display:none;">
+    <div class="export-bar-top">
+      <div>
+        <h3>Paste into Excel</h3>
+        <p>Copy the table below and paste it into your sheet</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="copyTable()">Copy entire table</button>
+        <button class="btn btn-success btn-sm" onclick="downloadExcel()">⬇ Download Excel</button>
+      </div>
+    </div>
+    <div class="export-table-wrap">
+      <table class="export-table" id="exportTable">
+        <thead>
+          <tr>
+            <th>Business Name</th>
+            <th>Email Message</th>
+            <th>WhatsApp / IG Message</th>
+          </tr>
+        </thead>
+        <tbody id="exportTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const COLS = {
+  businessName: 0,
+  igHandle: 1,
+  ownerName: 2,
+  email: 3,
+  phone: 4,
+  problemSpec: 5,
+  product: 6,
+  productSpec: 7,
+  emailMessage: 8,
+  whatsappMessage: 9,
+  reply: 10,
+  followUps: 11,
+  dateMessaged: 12,
+  dateReplied: 13
+};
+
+let workbook = null;
+let allRows = [];
+let pendingRows = [];
+let generatedData = [];
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    workbook = XLSX.read(e.target.result, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    const headerRowIndex = allRows.findIndex(r => String(r[0]).trim() === 'Business Name');
+    const startRow = headerRowIndex >= 0 ? headerRowIndex + 1 : 1;
+    const dataRows = allRows.slice(startRow).filter(r => r[COLS.businessName] && String(r[COLS.businessName]).trim() && String(r[COLS.businessName]).trim() !== 'Business Name');
+    pendingRows = dataRows.filter(r => {
+      const emailMsg = String(r[COLS.emailMessage] || '').trim();
+      const dmMsg = String(r[COLS.whatsappMessage] || '').trim();
+      const emailEmpty = !emailMsg || emailMsg === '' || emailMsg.toLowerCase() === 'null';
+      const dmEmpty = !dmMsg || dmMsg === '' || dmMsg.toLowerCase() === 'null';
+      return emailEmpty && dmEmpty;
+    });
+
+    document.getElementById('uploadSection').style.display = 'none';
+    document.getElementById('fileLoaded').style.display = 'block';
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileMeta').textContent = `${dataRows.length} total leads — ${pendingRows.length} pending`;
+    document.getElementById('leadsCount').innerHTML = `<strong>${pendingRows.length}</strong> leads ready to generate`;
+
+    // Skipped counts
+    const alreadyContacted = dataRows.filter(r => {
+      const e = String(r[COLS.emailMessage] || '').trim();
+      const d = String(r[COLS.whatsappMessage] || '').trim();
+      return (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+    }).length;
+    const missingData = dataRows.filter(r => {
+      const e = String(r[COLS.emailMessage] || '').trim();
+      const d = String(r[COLS.whatsappMessage] || '').trim();
+      const alreadyDone = (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+      if (alreadyDone) return false;
+      const hasEmail = String(r[COLS.email] || '').trim();
+      const hasProduct = String(r[COLS.product] || '').trim();
+      const hasProblem = String(r[COLS.problemSpec] || '').trim();
+      return !hasEmail || hasEmail.toLowerCase() === 'null' || !hasProduct || hasProduct.toLowerCase() === 'null' || !hasProblem || hasProblem.toLowerCase() === 'null';
+    }).length;
+
+    // Count leads needing follow up (contacted 3+ days ago, no reply)
+    const today2 = new Date();
+    const needFollowupCount = dataRows.filter(r => {
+      const e = String(r[COLS.emailMessage] || '').trim();
+      const d = String(r[COLS.whatsappMessage] || '').trim();
+      const contacted = (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+      if (!contacted) return false;
+      const rep = String(r[COLS.reply] || '').trim().toLowerCase();
+      const hasReply = rep && rep !== 'no' && rep !== 'null' && rep !== '0' && rep !== '';
+      if (hasReply) return false;
+      const ds = String(r[COLS.dateMessaged] || '').trim();
+      if (!ds || ds.toLowerCase() === 'null') return false;
+      const parts = ds.replace(/\./g, '/').split('/');
+      if (parts.length < 3) return false;
+      const sent = new Date(parts[2], parts[1] - 1, parts[0]);
+      const diff = Math.round((today2 - sent) / (1000 * 60 * 60 * 24));
+      return diff >= 3;
+    }).length;
+
+    document.getElementById('sAlready').textContent = alreadyContacted;
+    document.getElementById('sMissing').textContent = missingData;
+    document.getElementById('sPending').textContent = pendingRows.length;
+    document.getElementById('sFollowup').textContent = needFollowupCount;
+    document.getElementById('skippedBar').style.display = 'flex';
+
+    if (pendingRows.length === 0) {
+      document.getElementById('generateBtn').disabled = true;
+      document.getElementById('results').innerHTML = '<div class="empty-state"><div class="big">✅</div><p>All leads already have emails generated.</p></div>';
+    }
+
+    buildAnalytics(dataRows);
+    buildFollowups(dataRows);
+
+    // Save to localStorage
+    try {
+      const wb64 = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+      localStorage.setItem('solvant_wb', wb64);
+      localStorage.setItem('solvant_filename', file.name);
+    } catch(e) { console.warn('Could not save to localStorage:', e); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function resetTool() {
+  workbook = null; allRows = []; pendingRows = []; generatedData = [];
+  localStorage.removeItem('solvant_wb');
+  localStorage.removeItem('solvant_filename');
+  localStorage.removeItem('solvant_sent_followups');
+  sentFollowups.clear();
+  document.getElementById('uploadSection').style.display = 'block';
+  document.getElementById('fileLoaded').style.display = 'none';
+  document.getElementById('analytics').style.display = 'none';
+  document.getElementById('skippedBar').style.display = 'none';
+  document.getElementById('followupSection').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('exportBar').style.display = 'none';
+  fileInput.value = '';
+}
+
+function val(row, col) {
+  const v = row[col];
+  if (v === undefined || v === null) return '';
+  const s = String(v).trim();
+  return s.toLowerCase() === 'null' ? '' : s;
+}
+
+function detectProblem(raw) {
+  const s = raw.toLowerCase();
+  if (s.includes('|')) {
+    const parts = raw.split('|');
+    const type = parts[0].trim().toLowerCase();
+    const spec = parts[1] ? parts[1].trim() : '';
+    return { type: mapType(type), spec };
+  }
+  return { type: mapType(s), spec: '' };
+}
+
+function mapType(s) {
+  if (s.includes('no instagram') || s.includes('no active instagram') || s.includes("don't have") || s.includes('dont have')) return 'no_instagram';
+  if (s.includes('inactive') || s.includes("hasn't posted") || s.includes('havent posted') || s.includes("haven't posted") || s.includes('last post') || s.includes('not active')) return 'inactive';
+  if (s.includes('only ads') || s.includes('paid ads') || s.includes('not posting organic')) return 'only_ads';
+  if (s.includes('no reel') || s.includes('not posting reels') || s.includes("aren't posting reels") || s.includes('arent posting reels')) return 'no_reels';
+  if (s.includes('view') || s.includes('stuck below') || s.includes('stuck between') || s.includes('limited')) return 'views';
+  if (s.includes('inconsist') || s.includes('only posted') || s.includes('only') || s.includes('few posts') || s.includes('times in') || s.includes('posts in')) return 'inconsistent';
+  return 'views';
+}
+
+function buildSubject(ownerName, problemType) {
+  const name = ownerName ? ownerName.split(' ')[0] : '';
+  const isRevival = ['inactive', 'no_instagram'].includes(problemType);
+  if (isRevival) {
+    return name ? `${name}, can I help you revive your Instagram page?` : 'Can I help you revive your Instagram page?';
+  }
+  return name ? `${name}, can you help me?` : 'Can you help me?';
+}
+
+function buildEmail(row) {
+  const business = val(row, COLS.businessName);
+  const owner = val(row, COLS.ownerName);
+  const product = val(row, COLS.product);
+  const productSpec = val(row, COLS.productSpec);
+  const problemRaw = val(row, COLS.problemSpec);
+
+  const { type, spec } = detectProblem(problemRaw);
+  const greeting = owner ? owner.split(' ')[0] : business;
+  const subject = buildSubject(owner, type);
+
+  const platformLine = type === 'no_instagram'
+    ? `Came across your ${product || 'brand'} on Facebook today${productSpec ? ', ' + productSpec : '.'}`
+    : `Came across your ${product || 'brand'} on Instagram today${productSpec ? ', ' + productSpec : '.'}`;
+
+  let problemLine = '';
+  switch(type) {
+    case 'views':
+      problemLine = `I saw your posts often stay below ${spec || 'X'} views, so I wanted to try to solve that problem for you.`;
+      break;
+    case 'inactive':
+      problemLine = `I saw you haven't been active on Instagram since ${spec || 'a while'}, so I wanted to see if I could help take that off your hands.`;
+      break;
+    case 'no_reels':
+      problemLine = `I saw you aren't posting any Reels, so I wanted to try to solve that for you.`;
+      break;
+    case 'inconsistent':
+      // Split spec into posts part and month part e.g. "only 3 posts in June" -> "only 3 posts" + "June"
+      const monthMatch = spec.match(/\b(in\s+)?(january|february|march|april|may|june|july|august|september|october|november|december|\d{4})\b/i);
+      const month = monthMatch ? monthMatch[0].replace(/^in\s+/i, '') : '';
+      const postsPart = month ? spec.replace(monthMatch[0], '').replace(/\s+in\s*$/i, '').trim() : spec;
+      problemLine = `I saw you've uploaded ${postsPart || 'only a few posts'} on Instagram${month ? ' in ' + month : ''}, so I wanted to see if I could help you with consistency.`;
+      break;
+    case 'only_ads':
+      problemLine = `I saw you are currently running ads, but your organic feed hasn't been updated in a while.`;
+      break;
+    case 'no_instagram':
+      problemLine = `I saw you don't have an active Instagram page yet, so I wanted to see if I could help you with that.`;
+      break;
+  }
+
+  let bodyMiddle = '';
+  switch(type) {
+    case 'views':
+      bodyMiddle = `I'm Trnke, I own an agency that helps E-commerce brands get more sales with organic content.\nI'd be 100% confident I could get you at least 100,000+ views and 2x your traffic in the next 30 days, or you pay $0.`;
+      break;
+    case 'inactive':
+      bodyMiddle = `I'm Trnke, I own an agency that helps E-commerce brands get more sales with organic content.\nI want to help you revive your Instagram page, and I'm confident I could get you at least 100,000 views and 2x your traffic in the next 30 days, or you pay $0.`;
+      break;
+    case 'no_reels':
+      bodyMiddle = `I'm Trnke, I own an agency that helps E-commerce brands get more sales with organic content.\nI want to help you get into Reels to maximize your organic reach, and if I don't get you at least 100,000 views and 2x your traffic in the next 30 days, you pay $0.`;
+      break;
+    case 'inconsistent':
+      bodyMiddle = `I'm Trnke, I own an agency that helps E-commerce brands get more sales with organic content.\nI want to help you post consistently, and if I don't get you at least 100,000 views and 2x your traffic in the next 30 days, you pay $0.`;
+      break;
+    case 'only_ads':
+      bodyMiddle = `I'm Trnke, I own an agency that helps E-commerce brands get more sales with organic content.\nI want to help you with your organic content, and I'm confident I could get you at least 100,000 views and 2x your traffic in the next 30 days, or you pay $0.`;
+      break;
+    case 'no_instagram':
+      bodyMiddle = `I'm Trnke, I own an agency that helps E-commerce brands get more sales with organic content.\nI want to help you set up an Instagram page, and I'm confident I could get you at least 100,000 views and 2x your traffic in the next 30 days, or you pay $0.`;
+      break;
+  }
+
+  const cta = `If you're interested, let me know if you'd like to check out a demo reel I made for you?\nIt uses the exact video format that brought another brand in our portfolio over 250k views.`;
+  const sign = `Best regards,\nTrnke\nFounder, Solvant Media`;
+
+  const emailBody = `Hi ${greeting},\n\n${platformLine}\n${problemLine}\n\n${bodyMiddle}\n\n${cta}\n\n${sign}`;
+
+  const dmBody = `Hi ${greeting},\n${problemLine}\n\n${bodyMiddle}\n\n${cta}`;
+
+  return { subject, emailBody, dmBody, type, spec, productSpec };
+}
+
+function generateAll() {
+  generatedData = [];
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = '';
+
+  pendingRows.forEach((row, i) => {
+    const business = val(row, COLS.businessName);
+    const owner = val(row, COLS.ownerName);
+    const email = val(row, COLS.email);
+    const { subject, emailBody, dmBody, type, productSpec } = buildEmail(row);
+
+    generatedData.push({ row, subject, emailBody, dmBody, productSpec });
+
+    const avatar = business.charAt(0).toUpperCase();
+    const problemLabel = type.replace('_', ' ');
+    const fullEmail = `Subject: ${subject}\n\n${emailBody}`;
+
+    const card = document.createElement('div');
+    card.className = 'lead-card';
+    card.innerHTML = `
+      <div class="lead-card-header">
+        <div class="business">
+          <div class="avatar">${avatar}</div>
+          <div>
+            <div class="name">${business}</div>
+            <div class="email">${email || 'no email'}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${email ? `<button class="copy-btn" style="border:1px solid #2a2a2a;padding:4px 10px;" onclick="copyText(this, '${email}')">Copy email</button>` : ''}
+          ${email ? `<a class="gmail-btn" href="${buildGmailUrl(email, subject, emailBody)}" target="_blank">✉ Open in Gmail</a>` : ''}
+          <button class="sent-btn" id="sentBtn-${i}" onclick="markSent(this, ${i})">Mark as sent</button>
+          <span class="problem-tag">${problemLabel}</span>
+        </div>
+      </div>
+      <div class="lead-card-body">
+        <div class="msg-block">
+          <div class="msg-label">
+            Email
+            <div style="display:flex;gap:6px;">
+              <button class="copy-btn" onclick="copyText(this, \`${escapeBacktick(subject)}\`)">Copy subject</button>
+              <button class="copy-btn" onclick="copyText(this, \`${escapeBacktick(emailBody)}\`)">Copy body</button>
+            </div>
+          </div>
+          <div class="subject-line">Subject: ${subject}</div>
+          <div class="msg-text">${emailBody}</div>
+        </div>
+        <div class="msg-block">
+          <div class="msg-label">
+            DM / WhatsApp
+            <button class="copy-btn" onclick="copyText(this, \`${escapeBacktick(dmBody)}\`)">Copy</button>
+          </div>
+          <div class="msg-text">${dmBody}</div>
+        </div>
+      </div>
+    `;
+    resultsDiv.appendChild(card);
+  });
+
+  if (generatedData.length > 0) {
+    document.getElementById('exportBar').style.display = 'block';
+    document.getElementById('progressWrap').style.display = 'block';
+    document.getElementById('totalCount').textContent = generatedData.length;
+    buildExportTable();
+    buildCompactList();
+  }
+}
+
+let sentToday = 0;
+let currentView = 'full';
+
+function buildGmailUrl(email, subject, body) {
+  return 'https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(email) + '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+function markSent(btn, index) {
+  if (btn.classList.contains('marked')) return;
+  btn.classList.add('marked');
+  btn.textContent = '✓ Sent';
+  sentToday++;
+  document.getElementById('sentCount').textContent = sentToday;
+  const total = generatedData.length;
+  document.getElementById('progressFill').style.width = Math.round((sentToday / total) * 100) + '%';
+  // Update compact list row too
+  const compactBtn = document.getElementById('cSentBtn-' + index);
+  if (compactBtn) { compactBtn.classList.add('marked'); compactBtn.textContent = '✓ Sent'; }
+}
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('btnFull').classList.toggle('active', v === 'full');
+  document.getElementById('btnCompact').classList.toggle('active', v === 'compact');
+  document.getElementById('results').style.display = v === 'full' ? 'flex' : 'none';
+  document.getElementById('compactList').style.display = v === 'compact' ? 'flex' : 'none';
+}
+
+function buildCompactList() {
+  const list = document.getElementById('compactList');
+  list.innerHTML = '';
+  generatedData.forEach(({ row, subject, emailBody, dmBody }, i) => {
+    const business = val(row, COLS.businessName);
+    const email = val(row, COLS.email);
+    const { type } = buildEmail(row);
+    const problemLabel = type.replace('_', ' ');
+    const avatar = business.charAt(0).toUpperCase();
+    const gmailUrl = email ? buildGmailUrl(email, subject, emailBody) : '';
+    const row2 = document.createElement('div');
+    row2.className = 'compact-row';
+    row2.innerHTML = '<div class="c-avatar">' + avatar + '</div>' +
+      '<div class="c-name">' + business + '</div>' +
+      '<div class="c-email">' + (email || 'no email') + '</div>' +
+      '<span class="c-tag">' + problemLabel + '</span>' +
+      '<div class="c-actions">' +
+      (email ? '<a class="gmail-btn" href="' + gmailUrl + '" target="_blank">✉ Gmail</a>' : '') +
+      '<button class="sent-btn" id="cSentBtn-' + i + '" onclick="markSent(this,' + i + ')">Mark sent</button>' +
+      '</div>';
+    list.appendChild(row2);
+  });
+}
+
+function escapeBacktick(str) {
+  return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function buildExportTable() {
+  const tbody = document.getElementById('exportTableBody');
+  tbody.innerHTML = '';
+  generatedData.forEach(({ row, subject, emailBody, dmBody }) => {
+    const business = val(row, COLS.businessName);
+    const fullEmail = `Subject: ${subject}\n\n${emailBody}`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td title="${business}">${business}</td>
+      <td title="${fullEmail.replace(/"/g,'&quot;')}">${fullEmail.replace(/\n/g,' ').substring(0,80)}...</td>
+      <td title="${dmBody.replace(/"/g,'&quot;')}">${dmBody.replace(/\n/g,' ').substring(0,80)}...</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function copyTable() {
+  const rows = generatedData.map(({ row, subject, emailBody, dmBody }) => {
+    const business = val(row, COLS.businessName);
+    const fullEmail = `Subject: ${subject}\n\n${emailBody}`;
+    return `${business}\t${fullEmail}\t${dmBody}`;
+  });
+  const tsv = rows.join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    const btn = document.querySelector('.export-bar-top .btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy entire table'; }, 2000);
+  });
+}
+function buildAnalytics(dataRows) {
+  const contacted = dataRows.filter(r => {
+    const e = String(r[COLS.emailMessage] || '').trim();
+    const d = String(r[COLS.whatsappMessage] || '').trim();
+    return (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+  });
+
+  const replied = contacted.filter(r => {
+    const rep = String(r[COLS.reply] || '').trim().toLowerCase();
+    return rep && rep !== 'no' && rep !== 'null' && rep !== '0' && rep !== '';
+  });
+
+  const followups = contacted.reduce((sum, r) => {
+    const f = parseInt(r[COLS.followUps]) || 0;
+    return sum + f;
+  }, 0);
+
+  document.getElementById('mTotal').textContent = contacted.length;
+  document.getElementById('mReplied').textContent = replied.length;
+  const rate = contacted.length > 0 ? Math.round((replied.length / contacted.length) * 100) : 0;
+  document.getElementById('mReplyRate').textContent = rate + '% reply rate';
+  document.getElementById('mPending').textContent = contacted.length - replied.length;
+  document.getElementById('mFollowups').textContent = followups;
+
+  // Template performance bars
+  const templateTypes = ['views', 'inactive', 'no_reels', 'inconsistent', 'only_ads', 'no_instagram'];
+  const templateLabels = { views: 'Low views', inactive: 'Inactive', no_reels: 'No reels', inconsistent: 'Inconsistent', only_ads: 'Only ads', no_instagram: 'No Instagram' };
+  const templateCounts = {};
+  const templateReplies = {};
+  templateTypes.forEach(t => { templateCounts[t] = 0; templateReplies[t] = 0; });
+
+  contacted.forEach(r => {
+    const raw = String(r[COLS.problemSpec] || '').toLowerCase();
+    const type = mapType(raw);
+    templateCounts[type] = (templateCounts[type] || 0) + 1;
+    const rep = String(r[COLS.reply] || '').trim().toLowerCase();
+    if (rep && rep !== 'no' && rep !== 'null' && rep !== '0' && rep !== '') {
+      templateReplies[type] = (templateReplies[type] || 0) + 1;
+    }
+  });
+
+  const maxCount = Math.max(...Object.values(templateCounts), 1);
+  const tbars = document.getElementById('templateBars');
+  tbars.innerHTML = '';
+  templateTypes.forEach(t => {
+    if (templateCounts[t] === 0) return;
+    const replyRate = Math.round((templateReplies[t] / templateCounts[t]) * 100);
+    tbars.innerHTML += `<div class="bar-row">
+      <div class="bar-label">${templateLabels[t]}</div>
+      <div class="bar-track"><div class="bar-fill ${templateReplies[t] > 0 ? 'green' : ''}" style="width:${Math.round((templateCounts[t]/maxCount)*100)}%"></div></div>
+      <div class="bar-count">${templateCounts[t]} (${replyRate}%)</div>
+    </div>`;
+  });
+
+  // Activity bars - last 7 days
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+
+  const dayCounts = days.map(day => {
+    return dataRows.filter(r => {
+      const ds = String(r[COLS.dateMessaged] || '').trim();
+      if (!ds || ds === 'null') return false;
+      const parts = ds.replace(/\./g, '/').split('/');
+      if (parts.length < 3) return false;
+      const rowDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      return rowDate.toDateString() === day.toDateString();
+    }).length;
+  });
+
+  const maxDay = Math.max(...dayCounts, 1);
+  const abars = document.getElementById('activityBars');
+  abars.innerHTML = '';
+  days.forEach((d, i) => {
+    const label = d.toLocaleDateString('en', { weekday: 'short', day: 'numeric' });
+    abars.innerHTML += `<div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round((dayCounts[i]/maxDay)*100)}%"></div></div>
+      <div class="bar-count">${dayCounts[i]}</div>
+    </div>`;
+  });
+
+  document.getElementById('analytics').style.display = 'block';
+}
+const followupStore = [];
+function buildFollowups(dataRows) {
+  followupStore.length = 0;
+  const contacted = dataRows.filter(r => {
+    const e = String(r[COLS.emailMessage] || '').trim();
+    const d = String(r[COLS.whatsappMessage] || '').trim();
+    return (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+  });
+
+  const needsFollowup = contacted.filter(r => {
+    const rep = String(r[COLS.reply] || '').trim().toLowerCase();
+    const hasReply = rep && rep !== 'no' && rep !== 'null' && rep !== '0' && rep !== '';
+    if (hasReply) return false;
+    const ds = String(r[COLS.dateMessaged] || '').trim();
+    if (!ds || ds.toLowerCase() === 'null') return false;
+    return true;
+  });
+
+  if (needsFollowup.length === 0) return;
+
+  document.getElementById('followupCount').textContent = needsFollowup.length + ' leads';
+  const container = document.getElementById('followupCards');
+  container.innerHTML = '';
+
+  needsFollowup.forEach(r => {
+    const business = val(r, COLS.businessName);
+    const owner = val(r, COLS.ownerName);
+    const email = val(r, COLS.email);
+    const greeting = owner ? owner.split(' ')[0] : business;
+    const ds = String(r[COLS.dateMessaged] || '').trim();
+    let daysAgo = '';
+    if (ds && ds.toLowerCase() !== 'null') {
+      const parts = ds.replace(/\./g, '/').split('/');
+      if (parts.length >= 3) {
+        const sent = new Date(parts[2], parts[1] - 1, parts[0]);
+        const diff = Math.round((new Date() - sent) / (1000 * 60 * 60 * 24));
+        daysAgo = diff + ' days ago';
+      }
+    }
+
+    const followupEmail = 'Hi ' + greeting + ',\n\nI just wanted to follow up on this, since I noticed you haven\'t replied yet.\nLet me know if you\'d be interested in checking out the demo reel I made for you.\n\nBest regards,\nTrnke\nFounder, Solvant Media';
+    const followupDm = 'Hi ' + greeting + ',\n\nI just wanted to follow up on this, since I noticed you haven\'t replied yet.\nLet me know if you\'d be interested in checking out the demo reel I made for you.';
+    const originalEmail = String(r[COLS.emailMessage] || '');
+    const originalSubject = originalEmail.split('\n')[0].replace('Subject: ', '').trim();
+
+    const avatar = business.charAt(0).toUpperCase();
+    const fuIndex = followupStore.length;
+    followupStore.push({ email, originalSubject, followupEmail, followupDm });
+
+    const card = document.createElement('div');
+    card.className = 'followup-card';
+
+    const header = document.createElement('div');
+    header.className = 'followup-card-header';
+    header.innerHTML = '<div class="business" style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="width:34px;height:34px;border-radius:8px;background:#2a1f00;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fbbf24;">' + avatar + '</div><div><div class="name" style="font-size:15px;font-weight:700;color:#fff;">' + business + '</div><div class="email" style="font-size:12px;color:#666;">' + (email || 'no email') + '</div></div></div><div style="display:flex;align-items:center;gap:8px;">' + (daysAgo ? '<span class="days-badge">Contacted ' + daysAgo + '</span>' : '') + '</div>';
+
+    if (email) {
+      const replyBtn = document.createElement('button');
+      replyBtn.className = 'reply-btn';
+      replyBtn.textContent = '✉ Send reply';
+      if (!gmailToken) { replyBtn.disabled = true; replyBtn.title = 'Connect Gmail first'; }
+      replyBtn.addEventListener('click', function() { sendFollowUpReply(this, fuIndex); });
+      header.querySelector('div:last-child').appendChild(replyBtn);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'lead-card-body';
+    body.style.cssText = 'padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px;';
+
+    const emailBlock = document.createElement('div');
+    emailBlock.className = 'msg-block';
+    const emailLabel = document.createElement('div');
+    emailLabel.className = 'msg-label';
+    emailLabel.textContent = 'Follow up email';
+    const copyEmailBtn = document.createElement('button');
+    copyEmailBtn.className = 'copy-btn';
+    copyEmailBtn.textContent = 'Copy';
+    copyEmailBtn.addEventListener('click', function() { copyFollowup(this, followupEmail); });
+    emailLabel.appendChild(copyEmailBtn);
+    const emailText = document.createElement('div');
+    emailText.className = 'followup-msg';
+    emailText.textContent = followupEmail;
+    emailBlock.appendChild(emailLabel);
+    emailBlock.appendChild(emailText);
+
+    const dmBlock = document.createElement('div');
+    dmBlock.className = 'msg-block';
+    const dmLabel = document.createElement('div');
+    dmLabel.className = 'msg-label';
+    dmLabel.textContent = 'Follow up DM';
+    const copyDmBtn = document.createElement('button');
+    copyDmBtn.className = 'copy-btn';
+    copyDmBtn.textContent = 'Copy';
+    copyDmBtn.addEventListener('click', function() { copyFollowup(this, followupDm); });
+    dmLabel.appendChild(copyDmBtn);
+    const dmText = document.createElement('div');
+    dmText.className = 'followup-msg';
+    dmText.textContent = followupDm;
+    dmBlock.appendChild(dmLabel);
+    dmBlock.appendChild(dmText);
+
+    body.appendChild(emailBlock);
+    body.appendChild(dmBlock);
+    card.appendChild(header);
+    card.appendChild(body);
+    container.appendChild(card);
+  });
+
+  document.getElementById('followupSection').style.display = 'block';
+  buildFollowupCompact();
+}
+
+function setFollowupView(v) {
+  document.getElementById('btnFuFull').classList.toggle('active', v === 'full');
+  document.getElementById('btnFuCompact').classList.toggle('active', v === 'compact');
+  document.getElementById('followupCards').style.display = v === 'full' ? 'block' : 'none';
+  document.getElementById('followupCompact').style.display = v === 'compact' ? 'flex' : 'none';
+}
+
+function markFollowupSent(btn, i) {
+  btn.textContent = '✓ Sent';
+  btn.classList.add('marked');
+  sentFollowups.add(i);
+  saveSentFollowups();
+}
+
+function buildFollowupCompact() {
+  const list = document.getElementById('followupCompact');
+  list.innerHTML = '';
+  followupStore.forEach((item, i) => {
+    const { email } = item;
+    const isSent = sentFollowups.has(i);
+    const row2 = document.createElement('div');
+    row2.className = 'compact-row';
+    row2.innerHTML = '<div class="c-avatar" style="background:#2a1f00;color:#fbbf24;">' + (i+1) + '</div>' +
+      '<div class="c-name">' + (email || 'no email') + '</div>' +
+      '<div class="c-actions">' +
+      '<button class="copy-btn" style="border:1px solid #2a2a2a;padding:4px 10px;" onclick="copyFollowup(this, followupStore['+i+'].followupEmail)">Copy email</button>' +
+      '<button class="copy-btn" style="border:1px solid #2a2a2a;padding:4px 10px;" onclick="copyFollowup(this, followupStore['+i+'].followupDm)">Copy DM</button>' +
+      (email ? '<button class="reply-btn" onclick="sendFollowUpReply(this,'+i+')">✉ Send reply</button>' : '') +
+      '<button class="sent-btn' + (isSent ? ' marked' : '') + '" id="fuSent-'+i+'" onclick="markFollowupSent(this,'+i+')">' + (isSent ? '✓ Sent' : 'Mark sent') + '</button>' +
+      '</div>';
+    list.appendChild(row2);
+  });
+}
+
+function copyFollowup(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function downloadExcel() {
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  const headerRowIndex = rows.findIndex(r => String(r[0]).trim() === 'Business Name');
+  generatedData.forEach(({ row, subject, emailBody, dmBody }) => {
+    const rowIndex = rows.findIndex((r, i) => i > headerRowIndex &&
+      String(r[COLS.businessName]).trim() === String(row[COLS.businessName]).trim());
+    if (rowIndex === -1) return;
+    rows[rowIndex][COLS.emailMessage] = 'Subject: ' + subject + '\n\n' + emailBody;
+    rows[rowIndex][COLS.whatsappMessage] = dmBody;
+  });
+  const newSheet = XLSX.utils.aoa_to_sheet(rows);
+  const newWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(newWb, newSheet, workbook.SheetNames[0]);
+  XLSX.writeFile(newWb, 'Outreach_Table_Updated.xlsx');
+}
+
+// Gmail OAuth
+const GMAIL_CLIENT_ID = '882070017949-fgt5p28m5gtt42b3srgql0lem8al7n0h.apps.googleusercontent.com';
+const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly';
+let gmailToken = null;
+let tokenClient = null;
+
+window.onload = function() {
+  document.getElementById('gmailAuthBar').style.display = 'flex';
+
+  // Restore rate limiter timestamps
+  try {
+    const saved = localStorage.getItem('solvant_timestamps');
+    if (saved) {
+      const ts = JSON.parse(saved);
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      ts.filter(t => t > oneHourAgo).forEach(t => sentTimestamps.push(t));
+    }
+  } catch(e) {}
+
+  // Restore workbook from localStorage
+  try {
+    const wb64 = localStorage.getItem('solvant_wb');
+    const filename = localStorage.getItem('solvant_filename') || 'Outreach_Table.xlsx';
+    if (wb64) {
+      workbook = XLSX.read(wb64, { type: 'base64' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const headerRowIndex = allRows.findIndex(r => String(r[0]).trim() === 'Business Name');
+      const startRow = headerRowIndex >= 0 ? headerRowIndex + 1 : 1;
+      const dataRows = allRows.slice(startRow).filter(r => r[COLS.businessName] && String(r[COLS.businessName]).trim() && String(r[COLS.businessName]).trim() !== 'Business Name');
+      pendingRows = dataRows.filter(r => {
+        const emailMsg = String(r[COLS.emailMessage] || '').trim();
+        const dmMsg = String(r[COLS.whatsappMessage] || '').trim();
+        return (!emailMsg || emailMsg.toLowerCase() === 'null') && (!dmMsg || dmMsg.toLowerCase() === 'null');
+      });
+
+      document.getElementById('uploadSection').style.display = 'none';
+      document.getElementById('fileLoaded').style.display = 'block';
+      document.getElementById('fileName').textContent = filename;
+      document.getElementById('fileMeta').textContent = dataRows.length + ' total leads — ' + pendingRows.length + ' pending';
+      document.getElementById('leadsCount').innerHTML = '<strong>' + pendingRows.length + '</strong> leads ready to generate';
+      if (pendingRows.length === 0) {
+        document.getElementById('generateBtn').disabled = true;
+        document.getElementById('results').innerHTML = '<div class="empty-state"><div class="big">✅</div><p>All leads already have emails generated.</p></div>';
+      }
+
+      // Recalculate skipped counts
+      const alreadyContacted = dataRows.filter(r => {
+        const e = String(r[COLS.emailMessage] || '').trim();
+        const d = String(r[COLS.whatsappMessage] || '').trim();
+        return (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+      }).length;
+      const today2 = new Date();
+      const needFollowupCount = dataRows.filter(r => {
+        const e = String(r[COLS.emailMessage] || '').trim();
+        const d = String(r[COLS.whatsappMessage] || '').trim();
+        const contacted = (e && e.toLowerCase() !== 'null') || (d && d.toLowerCase() !== 'null');
+        if (!contacted) return false;
+        const rep = String(r[COLS.reply] || '').trim().toLowerCase();
+        if (rep && rep !== 'no' && rep !== 'null' && rep !== '0' && rep !== '') return false;
+        const ds = String(r[COLS.dateMessaged] || '').trim();
+        if (!ds || ds.toLowerCase() === 'null') return false;
+        const parts = ds.replace(/[.]/g, '/').split('/');
+        if (parts.length < 3) return false;
+        const sent = new Date(parts[2], parts[1] - 1, parts[0]);
+        return Math.round((today2 - sent) / (1000 * 60 * 60 * 24)) >= 3;
+      }).length;
+
+      document.getElementById('sAlready').textContent = alreadyContacted;
+      document.getElementById('sMissing').textContent = 0;
+      document.getElementById('sPending').textContent = pendingRows.length;
+      document.getElementById('sFollowup').textContent = needFollowupCount;
+      document.getElementById('skippedBar').style.display = 'flex';
+
+      buildAnalytics(dataRows);
+      buildFollowups(dataRows);
+    }
+  } catch(e) { console.warn('Could not restore from localStorage:', e); }
+
+  // Init Gmail
+  if (typeof google !== 'undefined') {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GMAIL_CLIENT_ID,
+      scope: GMAIL_SCOPES,
+      callback: (resp) => {
+        if (resp.error) { console.error(resp); return; }
+        gmailToken = resp.access_token;
+        fetchGmailProfile();
+      }
+    });
+  }
+};
+
+function connectGmail() {
+  if (!tokenClient) { alert('Google API not loaded yet, please refresh.'); return; }
+  tokenClient.requestAccessToken();
+}
+
+function fetchGmailProfile() {
+  fetch('https://www.googleapis.com/gmail/v1/users/me/profile', {
+    headers: { Authorization: 'Bearer ' + gmailToken }
+  }).then(r => r.json()).then(data => {
+    document.getElementById('gmailUser').textContent = data.emailAddress || 'Connected';
+    document.getElementById('authDot').classList.add('connected');
+    document.getElementById('authLabel').textContent = 'Connected';
+    document.getElementById('gmailAuthBtn').textContent = 'Reconnect';
+    // Enable all reply buttons
+    document.querySelectorAll('.reply-btn').forEach(b => b.disabled = false);
+  });
+}
+
+async function findOriginalMessage(toEmail, subject) {
+  // Search in sent mail for the original email to this recipient
+  const q = encodeURIComponent('in:sent to:' + toEmail);
+  const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?q=' + q + '&maxResults=5', {
+    headers: { Authorization: 'Bearer ' + gmailToken }
+  });
+  const data = await res.json();
+  if (!data.messages || data.messages.length === 0) return null;
+
+  // Get the first (most recent sent) message details
+  const msgRes = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/' + data.messages[data.messages.length - 1].id + '?format=metadata&metadataHeaders=Message-ID&metadataHeaders=Subject&metadataHeaders=References', {
+    headers: { Authorization: 'Bearer ' + gmailToken }
+  });
+  const msg = await msgRes.json();
+  const headers = msg.payload.headers;
+  const messageId = headers.find(h => h.name === 'Message-ID')?.value || '';
+  return { threadId: msg.threadId, messageId };
+}
+
+// Rate limiter - max 20 per hour
+const RATE_LIMIT = 20;
+const sentTimestamps = [];
+
+// Persist sent follow up states
+const sentFollowups = new Set(JSON.parse(localStorage.getItem('solvant_sent_followups') || '[]'));
+
+function saveSentFollowups() {
+  try { localStorage.setItem('solvant_sent_followups', JSON.stringify([...sentFollowups])); } catch(e) {}
+}
+
+function checkRateLimit() {
+  const now = Date.now();
+  const oneHourAgo = now - (60 * 60 * 1000);
+  // Remove timestamps older than 1 hour
+  while (sentTimestamps.length && sentTimestamps[0] < oneHourAgo) sentTimestamps.shift();
+  return sentTimestamps.length < RATE_LIMIT;
+}
+
+function timeUntilNextSlot() {
+  if (sentTimestamps.length < RATE_LIMIT) return 0;
+  const oldest = sentTimestamps[0];
+  const wait = Math.ceil((oldest + 60 * 60 * 1000 - Date.now()) / 60000);
+  return wait;
+}
+
+async function sendFollowUpReply(btn, fuIndex) {
+  if (!gmailToken) { alert('Please connect Gmail first.'); return; }
+  if (!checkRateLimit()) {
+    const wait = timeUntilNextSlot();
+    alert('Rate limit reached (20/hour). You can send again in ~' + wait + ' minute' + (wait === 1 ? '' : 's') + '.\n\nThis keeps your Gmail account safe from spam filters.');
+    return;
+  }
+  const { email: toEmail, originalSubject, followupEmail: body } = followupStore[fuIndex];
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const original = await findOriginalMessage(toEmail, originalSubject);
+    const subject = 'Re: ' + originalSubject;
+    const emailLines = [
+      'To: ' + toEmail,
+      'Subject: ' + subject,
+      'Content-Type: text/plain; charset=utf-8',
+    ];
+
+    if (original && original.messageId) {
+      emailLines.push('In-Reply-To: ' + original.messageId);
+      emailLines.push('References: ' + original.messageId);
+    }
+
+    emailLines.push('');
+    emailLines.push(body);
+
+    const raw = btoa(unescape(encodeURIComponent(emailLines.join('\r\n')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const payload = { raw };
+    if (original && original.threadId) payload.threadId = original.threadId;
+
+    const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + gmailToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      sentTimestamps.push(Date.now());
+      try { localStorage.setItem('solvant_timestamps', JSON.stringify(sentTimestamps)); } catch(e) {}
+      const remaining = RATE_LIMIT - sentTimestamps.length;
+      btn.textContent = '✓ Sent (' + remaining + ' left)';
+      btn.style.background = '#0f2a1a';
+      btn.style.color = '#2a8a50';
+    } else {
+      const err = await res.json();
+      console.error(err);
+      btn.textContent = 'Failed';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    console.error(e);
+    btn.textContent = 'Error';
+    btn.disabled = false;
+  }
+}
+
+// Keyboard shortcuts - only when hovering a card
+let hoveredIndex = null;
+document.addEventListener('mouseover', e => {
+  const card = e.target.closest('.lead-card');
+  if (card) {
+    const btn = card.querySelector('.sent-btn');
+    if (btn) {
+      const id = btn.id.replace('sentBtn-', '');
+      hoveredIndex = parseInt(id);
+    }
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (hoveredIndex === null || !generatedData[hoveredIndex]) return;
+  const { subject, emailBody, dmBody, row } = generatedData[hoveredIndex];
+  const email = val(row, COLS.email);
+  if (e.key === '1') { navigator.clipboard.writeText(subject); showShortcutFeedback('Subject copied'); }
+  if (e.key === '2') { navigator.clipboard.writeText(emailBody); showShortcutFeedback('Body copied'); }
+  if (e.key === '3') { navigator.clipboard.writeText(email); showShortcutFeedback('Email copied'); }
+  if (e.key === '4') { navigator.clipboard.writeText(dmBody); showShortcutFeedback('DM copied'); }
+});
+
+function showShortcutFeedback(msg) {
+  let el = document.getElementById('shortcutFeedback');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'shortcutFeedback';
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#6c63ff;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;transition:opacity 0.3s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 1500);
+}
+</script>
+</body>
+</html>
