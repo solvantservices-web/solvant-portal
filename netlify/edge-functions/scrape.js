@@ -1,4 +1,4 @@
-const SERP_API_KEY = '75c3219949559a1dd695695ccf81039018f703d24c8c48d836a0869f6e940d52';
+const SERP_API_KEY = '75c3219949599a1dd695695ccf81039018f703d24c8c48d836a0869f6e940d52';
 
 export default async function handler(req) {
   const url = new URL(req.url);
