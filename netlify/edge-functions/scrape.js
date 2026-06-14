@@ -20,7 +20,7 @@ export default async function handler(req) {
       api_key: SERP_API_KEY,
       engine: 'google',
       q: searchQuery,
-      num: '10',
+      num: '100',
       hl: 'en',
       gl: 'us'
     });
@@ -53,7 +53,7 @@ export default async function handler(req) {
           source
         });
       } catch(e) {}
-      if (leads.length >= 10) break;
+      if (leads.length >= 50) break;
     }
 
     return new Response(JSON.stringify({ leads }), {
